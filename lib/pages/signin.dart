@@ -55,20 +55,12 @@ class _SignInState extends State<SignIn> {
               children: [
                 InkWell(
                     onTap: () async {
-                      await signInWithGoogle().then((value) {
-                        print('object');
-                        return ScaffoldMessenger.of(context)
-                            .showSnackBar(SnackBar(
-                          content: const Text('Signed In Succesfully'),
-                          duration: const Duration(seconds: 1),
-                          action: SnackBarAction(
-                            label: 'ACTION',
-                            onPressed: () {},
-                          ),
-                        ));
-                      });
-                      if (!mounted) return;
-                      Navigator.of(context).pushReplacementNamed('/home');
+                     var result= await signInWithGoogle();
+                     if(result!=null){
+                          Navigator.of(context).pushReplacementNamed('/home');
+                     }
+                      // if (!mounted) return;
+                    
                     },
                     child:
                         SvgPicture.asset('assets/googleicon.svg', height: 30)),
