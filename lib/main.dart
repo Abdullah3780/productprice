@@ -24,8 +24,8 @@ void main() async {
           enableLights:true,
           importance: NotificationImportance.Max,
 
-          criticalAlerts: true,
-          locked: true,
+        
+     
           enableVibration: true
         )
       ]

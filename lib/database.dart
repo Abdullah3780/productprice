@@ -6,20 +6,35 @@ class Database{
   Database(){
     db=FirebaseFirestore.instance;
   }
+
   addData(Product product)async{
     try{
     await db.collection("products").add({'pname':product.name,'pweightorquantity':product.weightQuantity,'pprice':product.price});
     AwesomeNotifications().createNotification(
   content: NotificationContent(
       id: 10,
-      channelKey: 'basic_channel',
+      channelKey: 'key1',
       title: "Price of "+product.name+ " Updated",
-      body: "Price of "+product.price.toString()+""
+      body: "Price is "+product.price.toString()+""
   )
 );
+// AwesomeNotifications().createNotification(
+//         content: NotificationContent(
+//           id: DateTime.now().microsecondsSinceEpoch.remainder(10000),
+//           channelKey: 'key1',
+//           title:'Title for your notification',
+//           body: 'body text/ content'
+      
+//         )
+//     );
     }
     on FirebaseException catch(e){
       throw e.message.toString();
     }
+  }
+  readAllData(){
+  return db.collection("products").get();
+    
+    
   }
 }
