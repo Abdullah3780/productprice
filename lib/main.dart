@@ -26,7 +26,6 @@ void main() async {
             enableVibration: true)
       ]);
   await FirebaseMessaging.instance.subscribeToTopic('topic');
-
   runApp(const MyApp());
 }
 
