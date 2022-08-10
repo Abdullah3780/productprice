@@ -30,7 +30,7 @@ class Database {
       final data = {
         "to": "/topics/topic",
         "notification": {
-          "title": "Price of " + product.name + " Updated",
+          "title": "Price of " + product.name + " Added",
           "body": "Price is " + product.price.toString() + "",
         },
         "data": {
@@ -72,6 +72,51 @@ class Database {
 //     );
     } on FirebaseException catch (e) {
       throw e.message.toString();
+    }
+  }
+
+  updateData(Product product, id) async {
+    db
+        .collection('products')
+        .doc(id) // <-- Doc ID where data should be updated.
+        .update({
+      'pname': product.name,
+      'pweightorquantity': product.weightQuantity,
+      'pprice': product.price
+    });
+    const postUrl = 'https://fcm.googleapis.com/fcm/send';
+    final data = {
+      "to": "/topics/topic",
+      "notification": {
+        "title": "Price of " + product.name + " Added",
+        "body": "Price is " + product.price.toString() + "",
+      },
+      "data": {
+        "type": '0rder',
+        "id": '28',
+        "click_action": 'FLUTTER_NOTIFICATION_CLICK',
+      }
+    };
+
+    final headers = {
+      'content-type': 'application/json',
+      'Authorization':
+          'key=AAAAkVSkf-g:APA91bFH4E5wsqng9fV1IU4NUM8rn0tIsltuipOBrvhW9iRCRa2DHsrX0qyPUUH0OYTuq4xE1UfGxK4zOonnVWcVMo762j1BKjkoEbO3xyuWhJIQdtib49cM255wP-eCYyQCoQnAeWjb' // 'key=YOUR_SERVER_KEY'
+    };
+
+    final response = await http.post(Uri.parse(postUrl),
+        body: json.encode(data),
+        encoding: Encoding.getByName('utf-8'),
+        headers: headers);
+
+    if (response.statusCode == 200) {
+      // on success do sth
+      print('test ok push CFM');
+      return true;
+    } else {
+      print(' CFM error');
+      // on failure do sth
+      return false;
     }
   }
 
