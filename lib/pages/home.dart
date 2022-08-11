@@ -1,6 +1,7 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:image_picker/image_picker.dart';
-
+import 'package:anim_search_app_bar/anim_search_app_bar.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -21,10 +22,13 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   TextEditingController nameController = TextEditingController();
+  TextEditingController searchController = TextEditingController();
   final storage = FirebaseStorage.instance;
   TextEditingController weightController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   XFile? image;
+  UploadTask? uploadTask;
+  String searchValue = "";
   TextEditingController priceController = TextEditingController();
   @override
   void initState() {
@@ -34,25 +38,31 @@ class _HomeState extends State<Home> {
 
   uploadFile() async {
     // Create a storage reference from our app
-    final storageRef = FirebaseStorage.instance.ref();
+    // final storageRef = FirebaseStorage.instance.ref();
+    final path = 'files/${image!.name}';
+    final file = File(image!.path);
+    final ref = FirebaseStorage.instance.ref().child(path);
 
 // Create a reference to "mountains.jpg"
-    final mountainsRef = storageRef.child("mountains.jpg");
+    // final mountainsRef = storageRef.child("mountains.jpg");
 
 // Create a reference to 'images/mountains.jpg'
-    final mountainImagesRef = storageRef.child("images/mountains.jpg");
+    // final mountainImagesRef = storageRef.child("images/mountains.jpg");
 
 // While the file names are the same, the references point to different files
-    assert(mountainsRef.name == mountainImagesRef.name);
-    assert(mountainsRef.fullPath != mountainImagesRef.fullPath);
-    Directory appDocDir = await getApplicationDocumentsDirectory();
-    String filePath = '${appDocDir.absolute}/file-to-upload.png';
-    File file = File(filePath);
+    // assert(mountainsRef.name == mountainImagesRef.name);
+    // assert(mountainsRef.fullPath != mountainImagesRef.fullPath);
+    // Directory appDocDir = await getApplicationDocumentsDirectory();
+    // String filePath = '${appDocDir.absolute}/file-to-upload.png';
+    // File file = File(filePath);
 
     try {
-      await mountainsRef.putFile(file);
+      uploadTask = ref.putFile(file);
+      final snapshot = await uploadTask!.whenComplete(() {});
+      final urlDownload = await snapshot.ref.getDownloadURL();
+      return urlDownload;
     } on FirebaseException catch (e) {
-      return e.message;
+      print(e.message);
       // ...
     }
   }
@@ -74,7 +84,6 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     Database db = Database();
     return Scaffold(
-        appBar: AppBar(title: Text("Home")),
         floatingActionButton: FloatingActionButton(
           child: Icon(Icons.add),
           onPressed: () async {
@@ -106,16 +115,82 @@ class _HomeState extends State<Home> {
                             controller: priceController,
                             decoration: InputDecoration(label: Text('Price')),
                           ),
-                          TextButton(
+                          // image != null
+                          //     ? SizedBox(
+                          //         height: 30,
+                          //         width: 30,
+                          //         child: Image.file(File(image!.path)))
+                          //     :
+                          IconButton(
                               onPressed: () {
+                                showDialog(
+                                    context: context,
+                                    builder: (BuildContext ctx) {
+                                      return Material(
+                                        color: Colors.transparent,
+                                        child: Center(
+                                          child: Container(
+                                            color: Colors.white,
+                                            height: MediaQuery.of(context)
+                                                    .size
+                                                    .height *
+                                                0.1,
+                                            width: MediaQuery.of(context)
+                                                    .size
+                                                    .width *
+                                                0.5,
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text('Select Image From'),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    IconButton(
+                                                        onPressed: () async {
+                                                          // Capture a photo
+                                                          image = await _picker
+                                                              .pickImage(
+                                                                  source:
+                                                                      ImageSource
+                                                                          .camera);
+                                                          Navigator.pop(ctx);
+                                                        },
+                                                        icon: Icon(Icons
+                                                            .picture_in_picture)),
+                                                    IconButton(
+                                                        onPressed: () async {
+                                                          image = await _picker
+                                                              .pickImage(
+                                                                  source: ImageSource
+                                                                      .gallery);
+                                                          Navigator.pop(ctx);
+                                                        },
+                                                        icon: Icon(Icons.image))
+                                                  ],
+                                                )
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    });
+                              },
+                              icon: Icon(Icons.image)),
+                          TextButton(
+                              onPressed: () async {
+                                String url = await uploadFile();
                                 Product product = Product(
                                     nameController.text.toString(),
                                     double.parse(
                                         weightController.text.toString()),
                                     double.parse(
-                                        priceController.text.toString()));
+                                        priceController.text.toString()),
+                                    url);
                                 Database db = Database();
                                 db.addData(product);
+                                uploadFile();
                                 Navigator.pop(context);
                               },
                               child: Text('Add Product'))
@@ -125,146 +200,207 @@ class _HomeState extends State<Home> {
           },
         ),
         // body: ListView.builder(itemBuilder: (_)=>),
-        body: StreamBuilder(
-          stream: FirebaseFirestore.instance.collection("products").snapshots(),
-          builder: ((context, AsyncSnapshot snapshot) {
-            if (snapshot.hasData) {
-              List<DocumentSnapshot> docs = snapshot.data!.docs;
-              // items = snapshot.data.['products'];
-              print(docs);
-              return ListView.builder(
-                itemCount: docs.length,
-                itemBuilder: (context, index) => ListTile(
-                    onTap: () async {
-                      weightController.text =
-                          docs[index]['pweightorquantity'].toString();
-                      priceController.text = docs[index]['pprice'].toString();
-                      nameController.text = docs[index]['pname'].toString();
-                      showModalBottomSheet(
-                          elevation: 2.0,
-                          enableDrag: true,
-                          context: context,
-                          isScrollControlled: true,
-                          builder: (context) => SingleChildScrollView(
-                                padding: EdgeInsets.only(
-                                    bottom: MediaQuery.of(context)
-                                        .viewInsets
-                                        .bottom),
-                                child: Column(
-                                  children: [
-                                    TextField(
-                                      controller: nameController,
-                                      decoration: InputDecoration(
-                                          label: Text('Product Name')),
-                                    ),
-                                    TextField(
-                                      controller: weightController,
-                                      decoration: InputDecoration(
-                                          label: Text('Weight OR Quantity')),
-                                    ),
-                                    TextField(
-                                      controller: priceController,
-                                      decoration:
-                                          InputDecoration(label: Text('Price')),
-                                    ),
-                                    image != null
-                                        ? Image.asset(image!.path)
-                                        : IconButton(
-                                            onPressed: () {
-                                              showDialog(
-                                                  context: context,
-                                                  builder: (BuildContext ctx) {
-                                                    return Material(
-                                                      color: Colors.transparent,
-                                                      child: Center(
-                                                        child: Container(
-                                                          color: Colors.white,
-                                                          height: MediaQuery.of(
-                                                                      context)
-                                                                  .size
-                                                                  .height *
-                                                              0.1,
-                                                          width: MediaQuery.of(
-                                                                      context)
-                                                                  .size
-                                                                  .width *
-                                                              0.5,
-                                                          child: Column(
-                                                            mainAxisSize:
-                                                                MainAxisSize
-                                                                    .min,
-                                                            children: [
-                                                              Text(
-                                                                  'Select Image From'),
-                                                              Row(
-                                                                mainAxisAlignment:
-                                                                    MainAxisAlignment
-                                                                        .center,
-                                                                children: [
-                                                                  IconButton(
-                                                                      onPressed:
-                                                                          () async {
-                                                                        // Capture a photo
-                                                                        image = await _picker.pickImage(
-                                                                            source:
-                                                                                ImageSource.camera);
-                                                                        Navigator.pop(
-                                                                            ctx);
-                                                                      },
-                                                                      icon: Icon(
-                                                                          Icons
-                                                                              .picture_in_picture)),
-                                                                  IconButton(
-                                                                      onPressed:
-                                                                          () async {
-                                                                        image = await _picker.pickImage(
-                                                                            source:
-                                                                                ImageSource.gallery);
-                                                                        Navigator.pop(
-                                                                            ctx);
-                                                                      },
-                                                                      icon: Icon(
-                                                                          Icons
-                                                                              .image))
-                                                                ],
-                                                              )
-                                                            ],
+        body: Column(
+          children: [
+            AnimSearchAppBar(
+              cancelButtonText: "Cancel",
+              hintText: 'Search',
+              appBar: AppBar(title: Text('Home')),
+              cSearch: searchController,
+              onChanged: (val) {
+                // print(searchController.text);
+                setState(() {
+                  searchValue = val;
+                });
+                print(val);
+              },
+            ),
+            Expanded(
+              child: StreamBuilder(
+                stream: searchValue == ""
+                    ? FirebaseFirestore.instance
+                        .collection("products")
+                        .snapshots()
+                    : FirebaseFirestore.instance
+                        .collection("products")
+                        .where("pname", arrayContains: searchValue)
+                        .snapshots(),
+                builder: ((context, AsyncSnapshot snapshot) {
+                  if (snapshot.hasData) {
+                    List<DocumentSnapshot> docs = snapshot.data!.docs;
+                    // items = snapshot.data.['products'];
+                    print(docs);
+                    return ListView.builder(
+                      itemCount: docs.length,
+                      itemBuilder: (context, index) => Dismissible(
+                        key: UniqueKey(),
+                        onDismissed: (value) {
+                          if (value == DismissDirection.endToStart) {
+                            final db = Database();
+                            db.deleteSpecificData(docs[index].id);
+                          }
+                        },
+                        child: ListTile(
+                          onTap: () async {
+                            weightController.text =
+                                docs[index]['pweightorquantity'].toString();
+                            priceController.text =
+                                docs[index]['pprice'].toString();
+                            nameController.text =
+                                docs[index]['pname'].toString();
+                            showModalBottomSheet(
+                                elevation: 2.0,
+                                enableDrag: true,
+                                context: context,
+                                isScrollControlled: true,
+                                builder: (context) => SingleChildScrollView(
+                                      padding: EdgeInsets.only(
+                                          bottom: MediaQuery.of(context)
+                                              .viewInsets
+                                              .bottom),
+                                      child: Column(
+                                        children: [
+                                          TextField(
+                                            controller: nameController,
+                                            decoration: InputDecoration(
+                                                label: Text('Product Name')),
+                                          ),
+                                          TextField(
+                                            controller: weightController,
+                                            decoration: InputDecoration(
+                                                label:
+                                                    Text('Weight OR Quantity')),
+                                          ),
+                                          TextField(
+                                            controller: priceController,
+                                            decoration: InputDecoration(
+                                                label: Text('Price')),
+                                          ),
+                                          // image != null
+                                          //     ? SizedBox(
+                                          //         height: 20,
+                                          //         width: 20,
+                                          //         child: Image.file(File(image!.path)))
+                                          //     :
+                                          IconButton(
+                                              onPressed: () {
+                                                showDialog(
+                                                    context: context,
+                                                    builder:
+                                                        (BuildContext ctx) {
+                                                      return Material(
+                                                        color:
+                                                            Colors.transparent,
+                                                        child: Center(
+                                                          child: Container(
+                                                            color: Colors.white,
+                                                            height: MediaQuery.of(
+                                                                        context)
+                                                                    .size
+                                                                    .height *
+                                                                0.1,
+                                                            width: MediaQuery.of(
+                                                                        context)
+                                                                    .size
+                                                                    .width *
+                                                                0.5,
+                                                            child: Column(
+                                                              mainAxisSize:
+                                                                  MainAxisSize
+                                                                      .min,
+                                                              children: [
+                                                                Text(
+                                                                    'Select Image From'),
+                                                                Row(
+                                                                  mainAxisAlignment:
+                                                                      MainAxisAlignment
+                                                                          .center,
+                                                                  children: [
+                                                                    IconButton(
+                                                                        onPressed:
+                                                                            () async {
+                                                                          // Capture a photo
+                                                                          image =
+                                                                              await _picker.pickImage(source: ImageSource.camera);
+                                                                          Navigator.pop(
+                                                                              ctx);
+                                                                        },
+                                                                        icon: Icon(
+                                                                            Icons.picture_in_picture)),
+                                                                    IconButton(
+                                                                        onPressed:
+                                                                            () async {
+                                                                          image =
+                                                                              await _picker.pickImage(source: ImageSource.gallery);
+                                                                          Navigator.pop(
+                                                                              ctx);
+                                                                        },
+                                                                        icon: Icon(
+                                                                            Icons.image))
+                                                                  ],
+                                                                )
+                                                              ],
+                                                            ),
                                                           ),
                                                         ),
-                                                      ),
-                                                    );
-                                                  });
-                                            },
-                                            icon: Icon(Icons.image)),
-                                    TextButton(
-                                        onPressed: () {
-                                          Product product = Product(
-                                              nameController.text.toString(),
-                                              double.parse(weightController.text
-                                                  .toString()),
-                                              double.parse(priceController.text
-                                                  .toString()));
-                                          Database db = Database();
-                                          db.updateData(
-                                              product, docs[index].id);
-                                          Navigator.pop(context);
-                                        },
-                                        child: Text('Update Product'))
-                                  ],
+                                                      );
+                                                    });
+                                              },
+                                              icon: Icon(Icons.image)),
+                                          TextButton(
+                                              onPressed: () async {
+                                                String url = await uploadFile();
+                                                Product product = Product(
+                                                    nameController.text
+                                                        .toString(),
+                                                    double.parse(
+                                                        weightController.text
+                                                            .toString()),
+                                                    double.parse(priceController
+                                                        .text
+                                                        .toString()),
+                                                    url);
+                                                Database db = Database();
+                                                db.updateData(
+                                                    product, docs[index].id);
+
+                                                Navigator.pop(context);
+                                              },
+                                              child: Text('Update Product'))
+                                        ],
+                                      ),
+                                    ));
+                          },
+                          title: Text(docs[index]['pname']),
+                          subtitle:
+                              Text(docs[index]['pprice'].toString() + 'Rs'),
+                          leading: docs[index]['iurl'] == ""
+                              ? null
+                              : CircleAvatar(
+                                  child: ClipRRect(
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(20)),
+                                    child: Image.network(
+                                      docs[index]['iurl'],
+                                      fit: BoxFit.fill,
+                                    ),
+                                  ),
                                 ),
-                              ));
-                    },
-                    title: Text(docs[index]['pname']),
-                    subtitle: Text(docs[index]['pprice'].toString() + 'Rs')),
-              );
-            } else if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator.adaptive());
-            } else {
-              return Center(
-                child: Text('No Data In Database'),
-              );
-            }
-          }),
+                        ),
+                      ),
+                    );
+                  } else if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator.adaptive());
+                  } else {
+                    return Center(
+                      child: Text('No Data In Database'),
+                    );
+                  }
+                }),
+              ),
+            ),
+          ],
         ));
   }
 }

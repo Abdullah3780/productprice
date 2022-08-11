@@ -16,7 +16,8 @@ class Database {
       await db.collection("products").add({
         'pname': product.name,
         'pweightorquantity': product.weightQuantity,
-        'pprice': product.price
+        'pprice': product.price,
+        'iurl': product.url
       });
       // AwesomeNotifications().createNotification(
       //     content: NotificationContent(
@@ -82,7 +83,8 @@ class Database {
         .update({
       'pname': product.name,
       'pweightorquantity': product.weightQuantity,
-      'pprice': product.price
+      'pprice': product.price,
+      'iurl': product.url
     });
     const postUrl = 'https://fcm.googleapis.com/fcm/send';
     final data = {
@@ -122,5 +124,9 @@ class Database {
 
   readAllData() {
     return db.collection("products").get();
+  }
+
+  deleteSpecificData(id) {
+    db.collection("products").doc(id).delete();
   }
 }
