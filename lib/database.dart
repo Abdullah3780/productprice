@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:productprice/model.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:http/http.dart' as http;
@@ -113,7 +114,7 @@ class Database {
 
     if (response.statusCode == 200) {
       // on success do sth
-      print('test ok push CFM');
+      print('Cloud Messaging Successful');
       return true;
     } else {
       print(' CFM error');
@@ -126,7 +127,11 @@ class Database {
     return db.collection("products").get();
   }
 
-  deleteSpecificData(id) {
+  deleteSpecificData(id, imageUrl) async {
+    Reference photoRef = FirebaseStorage.instance.refFromURL(imageUrl);
+    await photoRef.delete().then((value) {
+      print('deleted Successfully');
+    });
     db.collection("products").doc(id).delete();
   }
 }

@@ -29,21 +29,45 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
 
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
   // This widget is the root of your application.
+  String initialroute = '/';
+  Future<void> checkLogin(initialroute) async {
+    if (FirebaseAuth.instance.currentUser != null) {
+      // signed in
+      initialroute = '/home';
+    } else {
+      initialroute = '/';
+    }
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+
+    checkLogin;
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
-    AwesomeNotifications()
-        .actionStream
-        .listen((ReceivedNotification receivedNotification) {
-      Navigator.of(context).pushNamed('/NotificationPage', arguments: {
-        // your page params. I recommend you to pass the
-        // entire *receivedNotification* object
-        receivedNotification
-      });
-    });
+    // AwesomeNotifications()
+    //     .actionStream
+    //     .listen((ReceivedNotification receivedNotification) {
+    //   Navigator.of(context).pushNamed('/NotificationPage', arguments: {
+    //     // your page params. I recommend you to pass the
+    //     // entire *receivedNotification* object
+    //     receivedNotification
+    //   });
+    // });
+
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
@@ -58,7 +82,7 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      initialRoute: '/',
+      initialRoute: initialroute,
       routes: {
         '/': (context) => SignInORSignUp(),
         '/signup': (context) => SignUp(),

@@ -55,12 +55,12 @@ class _SignInState extends State<SignIn> {
               children: [
                 InkWell(
                     onTap: () async {
-                     var result= await signInWithGoogle();
-                     if(result!=null){
-                          Navigator.of(context).pushReplacementNamed('/home');
-                     }
+                      var result = await signInWithGoogle();
+                      if (result != null) {
+                        Navigator.pop(context);
+                        Navigator.of(context).pushReplacementNamed('/home');
+                      }
                       // if (!mounted) return;
-                    
                     },
                     child:
                         SvgPicture.asset('assets/googleicon.svg', height: 30)),
